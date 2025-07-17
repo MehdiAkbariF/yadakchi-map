@@ -1,0 +1,28 @@
+{
+  "name": "yadakchi-map-project",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@geoman-io/leaflet-geoman-free": "^2.18.3",
+    "@neshan-maps-platform/mapbox-gl": "^1.1.5",
+    "framer-motion": "^12.23.6",
+    "html-to-image": "^1.11.13",
+    "leaflet": "^1.9.4",
+    "next": "15.4.1",
+    "ol": "^10.6.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-icons": "^5.5.0",
+    "react-leaflet": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4"
+  }
+}
