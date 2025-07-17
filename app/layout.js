@@ -1,5 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Script from 'next/script';
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,10 +21,42 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <head>
+        <link 
+          rel="stylesheet" 
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossOrigin=""
+        />
+        <link 
+          rel="stylesheet" 
+          href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" 
+        />
+        <link 
+          rel="stylesheet" 
+          href="https://unpkg.com/leaflet.browser.print/dist/leaflet.browser.print.css"
+        />
+        <link 
+          rel="stylesheet" 
+          href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" 
+        />
+        <link 
+          rel="stylesheet" 
+          href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"
+        />
+        <link 
+          rel="stylesheet" 
+          href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"
+        />
+      </head>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Script 
+          src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          strategy="beforeInteractive"
+        />
+        <main>
+          {children}
+        </main>
       </body>
     </html>
   );
