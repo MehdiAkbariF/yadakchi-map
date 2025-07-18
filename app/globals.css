@@ -1,33 +1,9 @@
 @import "tailwindcss";
 
-#mapid {
-  height: 98vh;
-  width: 100%;
-  z-index: 1;
-  position: relative;
-
-}
 
 /* Make sure Leaflet styles are properly applied */
-.leaflet-container {
-  height: 100%;
-  width: 100%;
-  
-}
 
-#map-controls {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 1000;
-  background-color: white;
-  padding: 10px;
-  border-radius: 5px;
-}
 
-.neshan-map-type-control {
-  display: none !important;
-}
 
 @keyframes scalePulse {
   0%, 100% {
