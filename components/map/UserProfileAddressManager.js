@@ -485,18 +485,13 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
       }
     };
 
-    // اگر زوم تغییر کرده، منتظر رویداد idle شو
-    if (needRestoreZoom) {
-      const onIdle = () => {
-        map.off("idle", onIdle);
-        takeScreenshot();
-      };
-      map.on("idle", onIdle);
-      map.triggerRepaint();
-    } else {
-      // اگر زوم تغییر نکرده، بلافاصله عکس بگیر
+    // همیشه منتظر رویداد idle شو (چه زوم تغییر کند چه نکند)
+    const onIdle = () => {
+      map.off("idle", onIdle);
       takeScreenshot();
-    }
+    };
+    map.on("idle", onIdle);
+    map.triggerRepaint();
   };
 
   return (
