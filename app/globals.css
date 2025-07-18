@@ -59,3 +59,12 @@
 .scale-pulse-color {
   animation: scalePulseColor 3s infinite;
 }
+
+  .static-branch-marker {
+  width: 24px;
+  height: 24px;
+  background-color: red; /* یا آیکون */
+  border-radius: 50%;
+  transform: translate(-50%, -100%);
+
+}

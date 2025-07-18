@@ -3,8 +3,9 @@
 // --- ایمپورت‌های مورد نیاز ---
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import nmp_mapboxgl from "@neshan-maps-platform/mapbox-gl";
-import "@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css";
+// حذف ایمپورت مستقیم mapbox-gl برای جلوگیری از خطای SSR
+// import nmp_mapboxgl from "@neshan-maps-platform/mapbox-gl";
+// import "@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css";
 import * as htmlToImage from "html-to-image";
 import {
   FaPlusCircle,
@@ -134,48 +135,340 @@ const NeshanSearchControl = ({ map, apiKey }) => {
 // ====================================================================
 // مودال انتخاب مکان از روی نقشه
 // ====================================================================
+
+
+// Overlay جدید: نمایش نقشه جداگانه فروشگاه
+const StoreMapOverlay = ({ isOpen, marker, onClose }) => {
+  const [directionInfo, setDirectionInfo] = React.useState({ distance: null, duration: null, loading: false, error: null });
+  const [routePolyline, setRoutePolyline] = React.useState(null);
+  const mapPolylineRef = useRef(null);
+  const [nmp_mapboxgl, setNmpMapboxgl] = React.useState(null);
+  const mapRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  // decode polyline utility
+  function decodePolyline(str) {
+    let index = 0, lat = 0, lng = 0, coordinates = [];
+    while (index < str.length) {
+      let b, shift = 0, result = 0;
+      do {
+        b = str.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+      shift = 0;
+      result = 0;
+      do {
+        b = str.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+      coordinates.push([lng * 1e-5, lat * 1e-5]);
+    }
+    return coordinates;
+  }
+
+  // داینامیک ایمپورت mapbox-gl فقط سمت کلاینت
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      import("@neshan-maps-platform/mapbox-gl").then((mod) => setNmpMapboxgl(mod.default || mod));
+      import("@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || !marker || !nmp_mapboxgl) return;
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
+    // ساخت نقشه جدید با مرکز فروشگاه
+    mapRef.current = new nmp_mapboxgl.Map({
+      mapType: "neshanVector",
+      container: mapContainerRef.current,
+      zoom: 15,
+      center: [marker.lng, marker.lat],
+      mapKey: "web.1f545dea36314292a96a0da8ef9c2dc5",
+      poi: true,
+      traffic: false,
+      mapTypeControl: false,
+      touchZoomRotate: true
+    });
+    // مارکر فروشگاه روی نقشه کوچک
+    new nmp_mapboxgl.Marker()
+      .setLngLat([marker.lng, marker.lat])
+      .addTo(mapRef.current);
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [isOpen, marker, nmp_mapboxgl]);
+
+  // گرفتن مسیر و رسم روی نقشه
+  useEffect(() => {
+    if (!isOpen || !marker) return;
+    setDirectionInfo({ distance: null, duration: null, loading: true, error: null });
+    setRoutePolyline(null);
+    const karaj = { lat: 35.8327, lng: 50.9916 };
+    const url = `https://api.neshan.org/v4/direction?origin=${karaj.lat},${karaj.lng}&destination=${marker.lat},${marker.lng}&type=car&traffic=true`;
+    fetch(url, {
+      headers: { 'Api-Key': 'service.e4ba1df0f9674c2da041ddd8c4a810b3' }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.routes && data.routes[0]) {
+          const route = data.routes[0];
+          setDirectionInfo({
+            distance: route.legs[0]?.distance?.text || null,
+            duration: route.legs[0]?.duration?.text || null,
+            loading: false,
+            error: null
+          });
+          if (route.overview_polyline && route.overview_polyline.points) {
+            setRoutePolyline(route.overview_polyline.points);
+          }
+        } else {
+          setDirectionInfo({ distance: null, duration: null, loading: false, error: 'خطا در دریافت اطلاعات مسیر' });
+        }
+      })
+      .catch(() => setDirectionInfo({ distance: null, duration: null, loading: false, error: 'خطا در دریافت اطلاعات مسیر' }));
+  }, [isOpen, marker]);
+
+  // رسم polyline روی نقشه
+  useEffect(() => {
+    if (!mapRef.current || !routePolyline || !nmp_mapboxgl) return;
+    // پاک کردن لایه قبلی
+    if (mapPolylineRef.current) {
+      try { mapRef.current.removeLayer('route'); } catch {}
+      try { mapRef.current.removeSource('route'); } catch {}
+      mapPolylineRef.current = null;
+    }
+    const coords = decodePolyline(routePolyline).map(([lng, lat]) => [lng, lat]);
+    mapRef.current.on('load', () => {
+      if (mapRef.current.getSource('route')) return;
+      mapRef.current.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: coords
+          }
+        }
+      });
+      mapRef.current.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#1976d2', 'line-width': 5, 'line-opacity': 0.85 }
+      });
+      mapPolylineRef.current = true;
+    });
+  }, [routePolyline, nmp_mapboxgl]);
+
+  if (!isOpen || !marker) return null;
+  return (
+    <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-[200]" style={{ pointerEvents: 'auto' }} dir="rtl">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 pt-12 text-center mx-auto relative" style={{ minHeight: '340px', minWidth: '320px' }}>
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 p-3 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 hover:text-blue-600 transition-colors"
+          aria-label="بازگشت"
+        >
+          <FaArrowRight size={24} />
+        </button>
+        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-3">
+          <img src={YadakchiLogo.src} alt="Yadakchi Marker" className="w-10 h-10 object-contain" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{marker.name}</h3>
+        <p className="text-gray-700 text-sm mb-4">{marker.desc}</p>
+        {/* نمایش فاصله و زمان رسیدن از کرج تا فروشگاه */}
+        <div className="mb-4">
+          <div className="inline-block bg-blue-50 rounded-lg px-4 py-2 text-xs text-blue-900 font-semibold shadow">
+            {directionInfo.loading ? (
+              <span>در حال دریافت مسیر...</span>
+            ) : directionInfo.error ? (
+              <span className="text-red-500">{directionInfo.error}</span>
+            ) : (
+              <>
+                <span>فاصله تا فروشگاه: <b>{directionInfo.distance || '-'}</b></span>
+                <span className="mx-2">|</span>
+                <span>زمان تقریبی: <b>{directionInfo.duration || '-'}</b></span>
+              </>
+            )}
+          </div>
+        </div>
+        <div ref={mapContainerRef} className="w-full h-48 rounded-lg border border-gray-200 shadow-inner mx-auto" />
+      </div>
+    </div>
+  );
+};
+
+
 const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
   const mapRef = useRef(null);
   const mapContainerRef = useRef(null);
   const [mapInstance, setMapInstance] = useState(null);
+  const [showStaticMarkers, setShowStaticMarkers] = useState(true);
+  const [selectedMarkerIdx, setSelectedMarkerIdx] = useState(null);
+  const [storeMapOverlay, setStoreMapOverlay] = useState({ open: false, marker: null });
+  const [nmp_mapboxgl, setNmpMapboxgl] = React.useState(null);
 
- useEffect(() => {
-  if (!isOpen) return;
-  const centerPoint = initialCenter
-    ? [initialCenter.lng, initialCenter.lat]
-    : [51.389, 35.6892];
-  const initialZoom = initialCenter ? 16 : 12;
+  // مختصات مارکرهای ثابت یدکچی در تهران
+  const staticMarkers = [
+    { lat: 35.6892, lng: 51.3890, name: "فروشگاه اصغر ", desc: "میدان آزادی" },
+    { lat: 35.7219, lng: 51.3347, name: "فروشگاه مهدی", desc: "میدان تجریش" },
+    { lat: 35.7006, lng: 51.3370, name: "فروشگاه رضا", desc: "میدان ونک" },
+    { lat: 35.6467, lng: 51.3890, name: "فروشگاه فلان", desc: "میدان نازی‌آباد" },
+  ];
 
-  const map = new nmp_mapboxgl.Map({
-    mapType: "neshanVector",
-    container: mapContainerRef.current,
-    zoom: initialZoom,
-    pitch: 0,
-    center: centerPoint,
-    minZoom: 2,
-    maxZoom: 21,
-    trackResize: true,
-    mapKey: "web.1f545dea36314292a96a0da8ef9c2dc5",
-    poi: true,
-    traffic: false,
-    mapTypeControl: false,
-    touchZoomRotate : true
-  });
-  setMapInstance(map);
-  mapRef.current = map;
+  // نگهداری رفرنس مارکرها برای حذف
+  const staticMarkerRefs = useRef([]);
 
-  return () => {
-    if (mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
-      setMapInstance(null);
+  // ساخت map فقط یکبار هنگام باز شدن مودال یا تغییر initialCenter
+  // داینامیک ایمپورت mapbox-gl فقط سمت کلاینت
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      import("@neshan-maps-platform/mapbox-gl").then((mod) => setNmpMapboxgl(mod.default || mod));
+      import("@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css");
     }
-  };
-}, [isOpen, initialCenter]);
+  }, []);
 
-  const handleConfirmLocation = () => {
+  useEffect(() => {
+    if (!isOpen || !nmp_mapboxgl) return;
+    const centerPoint = initialCenter
+      ? [initialCenter.lng, initialCenter.lat]
+      : [51.389, 35.6892];
+    const initialZoom = initialCenter ? 16 : 12;
+
+    const map = new nmp_mapboxgl.Map({
+      mapType: "neshanVector",
+      container: mapContainerRef.current,
+      zoom: initialZoom,
+      pitch: 0,
+      center: centerPoint,
+      minZoom: 8, // محدودیت زوم اوت تا سطح دو شهر
+      maxZoom: 21,
+      trackResize: true,
+      mapKey: "web.1f545dea36314292a96a0da8ef9c2dc5",
+      poi: true,
+      traffic: false,
+      mapTypeControl: false,
+      touchZoomRotate: true
+    });
+    setMapInstance(map);
+    mapRef.current = map;
+
+    return () => {
+      // حذف مارکرهای ثابت از نقشه
+      if (staticMarkerRefs.current && staticMarkerRefs.current.length > 0) {
+        staticMarkerRefs.current.forEach((marker) => marker.remove());
+        staticMarkerRefs.current = [];
+      }
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        setMapInstance(null);
+      }
+    };
+  }, [isOpen, initialCenter, nmp_mapboxgl]);
+
+  // افزودن/حذف مارکرهای ثابت بدون ریست نقشه
+  useEffect(() => {
+    if (!mapRef.current || !nmp_mapboxgl) return;
+    // حذف مارکرهای قبلی
+    if (staticMarkerRefs.current && staticMarkerRefs.current.length > 0) {
+      staticMarkerRefs.current.forEach((marker) => marker.remove());
+      staticMarkerRefs.current = [];
+    }
+    if (showStaticMarkers) {
+      staticMarkerRefs.current = staticMarkers.map(({ lat, lng, name, desc }, idx) => {
+        // ساخت یک div برای نام و مارکر
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.pointerEvents = 'auto';
+
+        // نام مارکر
+        const label = document.createElement('div');
+        label.innerText = name;
+        label.style.background = 'rgba(0,0,0,0.7)';
+        label.style.color = '#fff';
+        label.style.fontSize = '11px';
+        label.style.padding = '2px 8px';
+        label.style.borderRadius = '8px';
+        label.style.marginBottom = '2px';
+        label.style.whiteSpace = 'nowrap';
+        label.style.userSelect = 'none';
+        wrapper.appendChild(label);
+
+        // مارکر تصویری
+        const el = document.createElement('div');
+        el.style.width = '22px';
+        el.style.height = '22px';
+        el.style.background = 'none';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        const img = document.createElement('img');
+        img.src = YadakchiLogo.src;
+        img.alt = 'Yadakchi Marker';
+        img.style.width = '22px';
+        img.style.height = '22px';
+        img.style.objectFit = 'contain';
+        img.style.opacity = (selectedMarkerIdx === idx) ? '1' : '0.5';
+        el.appendChild(img);
+        el.style.cursor = 'pointer';
+        el.onclick = (e) => {
+          e.stopPropagation();
+          setSelectedMarkerIdx(idx);
+          setStoreMapOverlay({ open: true, marker: { lat, lng, name, desc } });
+        };
+        wrapper.appendChild(el);
+
+        const marker = new nmp_mapboxgl.Marker({ element: wrapper })
+          .setLngLat([lng, lat])
+          .addTo(mapRef.current);
+        return marker;
+      });
+    }
+  }, [showStaticMarkers, isOpen, selectedMarkerIdx, nmp_mapboxgl]);
+
+  // اگر روی نقشه کلیک شد (نه روی مارکر)، انتخاب مارکر را حذف کن
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const handleMapClick = (e) => {
+      setSelectedMarkerIdx(null);
+    };
+    // فقط روی خود نقشه کلیک شود، نه روی مارکر
+    mapRef.current.on('click', handleMapClick);
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.off('click', handleMapClick);
+      }
+    };
+  }, [isOpen]);
+
+  const handleConfirmLocation = async () => {
     if (!mapRef.current) return;
     const map = mapRef.current;
+    let originalZoom = null;
+    // اگر زوم فعلی نزدیک به 16 نیست، زوم را روی 16 بگذار
+    if (typeof map.getZoom === 'function') {
+      originalZoom = map.getZoom();
+      if (originalZoom < 15.5 || originalZoom > 16.5) {
+        map.setZoom(16);
+        // کمی صبر کن تا نقشه رندر شود
+        await new Promise(res => setTimeout(res, 400));
+      }
+    }
     map.once("idle", () => {
       const center = map.getCenter();
       const mapCanvas = map.getCanvas();
@@ -185,89 +478,104 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
       } else {
         onConfirm({ lat: center.lat, lng: center.lng, mapImage: null });
       }
+      // اگر لازم بود زوم را برگردان
+      if (originalZoom !== null && (originalZoom < 15.5 || originalZoom > 16.5)) {
+        map.setZoom(originalZoom);
+      }
     });
     map.triggerRepaint();
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[4000] p-2 sm:p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="relative bg-white rounded-lg shadow-xl w-full max-w-lg md:max-w-2xl lg:max-w-3xl h-[90vh] 
-            md:h-[80vh] lg:h-[90vh] flex flex-col overflow-hidden border-gray-200 p-2 sm:p-4"
-          >
-            <button
-              onClick={onClose}
-              className="absolute top-3 left-3 z-30 p-2 bg-white/80 backdrop-blur-sm rounded-full text-gray-800 hover:bg-white hover:text-red-600 transition-all duration-200 cursor-pointer"
-              aria-label="بستن نقشه"
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[4000] p-2 sm:p-4">
+            {/* StoreMapOverlay is now rendered outside the blurred modal */}
+            {storeMapOverlay.open && (
+              <StoreMapOverlay
+                isOpen={storeMapOverlay.open}
+                marker={storeMapOverlay.marker}
+                onClose={() => setStoreMapOverlay({ open: false, marker: null })}
+              />
+            )}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white rounded-lg shadow-xl w-full max-w-lg md:max-w-2xl lg:max-w-3xl h-[90vh] md:h-[80vh] lg:h-[90vh] flex flex-col overflow-hidden border-gray-200 p-2 sm:p-4"
+              style={storeMapOverlay.open ? { filter: 'blur(2px)', opacity: 0.4, pointerEvents: 'none', transition: 'all 0.2s' } : {}}
             >
-              <IoMdClose size={24} />
-            </button>
-
-            <div className="p-2 sm:p-4 text-right">
-              <h3 className="text-lg sm:text-xl font-bold text-gray-800">
-                انتخاب موقعیت مکانی
-              </h3>
-              <p className="mt-1 text-xs text-gray-500">
-                سفارش‌های شما به موقعیتی که انتخاب می‌کنید ارسال می‌شود.
-              </p>
-            </div>
-
-            <div className="relative flex-grow bg-gray-200 rounded-md overflow-hidden">
-              <div ref={mapContainerRef} className="h-full w-full" />
-              {mapInstance && (
-                <NeshanSearchControl
-                  map={mapInstance}
-                  apiKey="service.07ed2db203df42b5a08ce4340ad38b5c"
-                />
-              )}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                <img
-                  src={YadakchiLogo.src}
-                  alt="Yadakchi Logo"
-                  className="w-6 h-8"
-                />
-              </div>
-             <div
-  className=" scale-pulse absolute bottom-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0 z-20 backdrop-blur-sm  rounded-lg shadow-md w-[90%] max-w-xs sm:w-auto"
-  dir="rtl"
->
-  <div className="flex items-center  w-fit rounded-lg p-2 mx-auto sm:mx-0">
-    <p className="text-sm font-semibold p-2 text-white rounded-lg scale-pulse-color">
-      یدکچی
-    </p>
-    <img
-      src={YadakchiLogo.src}
-      alt="Yadakchi Logo"
-      className="w-6 h-8 "
-    />
-      
-  </div>
-  
-</div>
-            </div>
-            <div className="p-4 bg-gray-50 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-              <button
-                onClick={handleConfirmLocation}
-                className="w-full sm:w-1/2 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition-colors cursor-pointer"
-              >
-                تایید این مکان
-              </button>
               <button
                 onClick={onClose}
-                className="w-full sm:w-1/2 px-6 py-3 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
+                className="absolute top-3 left-3 z-30 p-2 bg-white/80 backdrop-blur-sm rounded-full text-gray-800 hover:bg-white hover:text-red-600 transition-all duration-200 cursor-pointer"
+                aria-label="بستن نقشه"
               >
-                انصراف
+                <IoMdClose size={24} />
               </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+
+              <div className="p-2 sm:p-4 text-right">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-800">
+                  انتخاب موقعیت مکانی
+                </h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  سفارش‌های شما به موقعیتی که انتخاب می‌کنید ارسال می‌شود.
+                </p>
+              </div>
+
+              <div className="relative flex-grow bg-gray-200 rounded-md overflow-hidden">
+                <div ref={mapContainerRef} className="h-full w-full" />
+                {mapInstance && (
+                  <NeshanSearchControl
+                    map={mapInstance}
+                    apiKey="service.07ed2db203df42b5a08ce4340ad38b5c"
+                  />
+                )}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                  <img
+                    src={YadakchiLogo.src}
+                    alt="Yadakchi Logo"
+                    className="w-6 h-8"
+                  />
+                </div>
+                <div
+                  className="scale-pulse absolute bottom-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0 z-20 backdrop-blur-sm rounded-lg shadow-md w-[90%] max-w-xs sm:w-auto"
+                  dir="rtl"
+                >
+                  <div className="flex items-center w-fit rounded-lg p-2 mx-auto sm:mx-0 gap-2">
+                    <p className="text-sm font-semibold p-2 text-white rounded-lg scale-pulse-color">
+                      یدکچی
+                    </p>
+                    <label className="flex items-center gap-1 cursor-pointer select-none text-xs text-white">
+                      <input
+                        type="checkbox"
+                        checked={showStaticMarkers}
+                        onChange={e => setShowStaticMarkers(e.target.checked)}
+                        className="accent-blue-600 w-4 h-4 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 bg-gray-50 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+                <button
+                  onClick={handleConfirmLocation}
+                  className="w-full sm:w-1/2 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition-colors cursor-pointer"
+                >
+                  تایید این مکان
+                </button>
+                <button
+                  onClick={onClose}
+                  className="w-full sm:w-1/2 px-6 py-3 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
+                >
+                  انصراف
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
@@ -312,6 +620,7 @@ const AlertModal = ({ isOpen, onClose, title, message }) => {
 // ====================================================================
 // مودال فرم آدرس
 // ====================================================================
+
 const AddressFormModal = ({
   isOpen,
   onClose,
@@ -329,6 +638,9 @@ const AddressFormModal = ({
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // --- فاصله و زمان رسیدن از نقطه کاربر تا کرج ---
+  const [distanceInfo, setDistanceInfo] = useState({ distance: null, duration: null, loading: false, error: null });
+
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
 
@@ -343,6 +655,7 @@ const AddressFormModal = ({
     setAddress("");
     setProvince("");
     setCity("");
+    setDistanceInfo({ distance: null, duration: null, loading: true, error: null });
     const fetchAddressFromNeshan = async () => {
       try {
         const { lat, lng } = locationInfo.coords;
@@ -366,6 +679,42 @@ const AddressFormModal = ({
       }
     };
     fetchAddressFromNeshan();
+
+    // --- گرفتن فاصله و زمان رسیدن از کاربر تا کرج ---
+    const fetchDistance = async () => {
+      try {
+        // نقطه ثابت کرج
+        const karaj = { lat: 35.8327, lng: 50.9916 };
+        const { lat, lng } = locationInfo.coords;
+        const res = await fetch("https://api.neshan.org/v2/matrix?type=car&traffic=true", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Api-Key": "service.23006b3aa8e144539acb107eaa77f6e6"
+          },
+          body: JSON.stringify({
+            origins: [{ lat, lng }],
+            destinations: [karaj]
+          })
+        });
+        if (!res.ok) throw new Error("خطا در دریافت فاصله از نشان");
+        const data = await res.json();
+        const el = data?.rows?.[0]?.elements?.[0];
+        if (el && el.status === "OK") {
+          setDistanceInfo({
+            distance: el.distance.text,
+            duration: el.duration.text,
+            loading: false,
+            error: null
+          });
+        } else {
+          setDistanceInfo({ distance: null, duration: null, loading: false, error: "خطا در محاسبه فاصله" });
+        }
+      } catch (err) {
+        setDistanceInfo({ distance: null, duration: null, loading: false, error: "خطا در دریافت فاصله" });
+      }
+    };
+    fetchDistance();
   }, [isOpen, locationInfo]);
 
   const handlePlakChange = (e) => {
@@ -404,6 +753,25 @@ const AddressFormModal = ({
 
     setIsSaving(true);
 
+    // اگر نقشه‌ای وجود دارد، زوم را قبل از عکس گرفتن روی 16 بگذار
+    let originalZoom = null;
+    let mapCanvas = null;
+    try {
+      // سعی کن نقشه را پیدا کنی (درون imageContainerRef)
+      const mapDiv = imageContainerRef.current.querySelector('canvas');
+      if (mapDiv && mapDiv.parentElement && mapDiv.parentElement._mapInstance) {
+        const mapInstance = mapDiv.parentElement._mapInstance;
+        if (mapInstance && typeof mapInstance.getZoom === 'function') {
+          originalZoom = mapInstance.getZoom();
+          if (originalZoom < 15.5 || originalZoom > 16.5) {
+            mapInstance.setZoom(16);
+            // کمی صبر کن تا نقشه رندر شود
+            await new Promise(res => setTimeout(res, 400));
+          }
+        }
+      }
+    } catch (e) {}
+
     try {
       const compositeImage = await htmlToImage.toPng(imageContainerRef.current, {
         cacheBust: true,
@@ -438,6 +806,16 @@ const AddressFormModal = ({
       });
     } finally {
       setIsSaving(false);
+      // اگر لازم بود زوم را برگردان
+      try {
+        const mapDiv = imageContainerRef.current.querySelector('canvas');
+        if (mapDiv && mapDiv.parentElement && mapDiv.parentElement._mapInstance && originalZoom) {
+          const mapInstance = mapDiv.parentElement._mapInstance;
+          if (typeof mapInstance.setZoom === 'function') {
+            mapInstance.setZoom(originalZoom);
+          }
+        }
+      } catch (e) {}
     }
   };
 
@@ -464,7 +842,7 @@ const AddressFormModal = ({
                 </div>
               ) : (
                 <>
-                  <div ref={imageContainerRef} className="relative w-full h-48 rounded-t-lg bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div ref={imageContainerRef} className="relative w-full h-56 rounded-t-lg bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                     {locationInfo?.mapImage ? (
                       <>
                         <img
