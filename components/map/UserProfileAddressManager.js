@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import nmp_mapboxgl from "@neshan-maps-platform/mapbox-gl";
 import "@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css";
-import * as htmlToImage from "html-to-image"; // ایمپورت کتابخانه برای اسکرین‌شات
+import * as htmlToImage from "html-to-image";
 import {
   FaPlusCircle,
   FaMapMarkerAlt,
@@ -88,18 +88,18 @@ const NeshanSearchControl = ({ map, apiKey }) => {
       className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[95%] sm:w-[90%] max-w-sm"
       dir="rtl"
     >
-      <div className="relative">
+      <div className="relative w-full mx-auto ">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
           placeholder="جستجوی آدرس یا مکان..."
-          className={`bg-white w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 shadow-lg outline-none transition-all ${
+          className={`bg-white h-10 w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 shadow-lg outline-none transition-all ${
             suggestions.length > 0 && isFocused ? "rounded-t-lg" : "rounded-lg"
           }`}
         />
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 ">
           {isLoading ? (
             <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
           ) : (
@@ -130,6 +130,7 @@ const NeshanSearchControl = ({ map, apiKey }) => {
   );
 };
 
+
 // ====================================================================
 // مودال انتخاب مکان از روی نقشه
 // ====================================================================
@@ -159,7 +160,6 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
     traffic: false,
     mapTypeControl: false,
     touchZoomRotate : true
-     // <<-- این خط کنترلر لایه‌ها را حذف می‌کند
   });
   setMapInstance(map);
   mapRef.current = map;
@@ -250,7 +250,7 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
   
 </div>
             </div>
-            <div className="p-4 bg-gray-50 border-t flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+            <div className="p-4 bg-gray-50 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <button
                 onClick={handleConfirmLocation}
                 className="w-full sm:w-1/2 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition-colors cursor-pointer"
@@ -271,14 +271,46 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
   );
 };
 
+
+// ====================================================================
+// مودال هشدار
+// ====================================================================
+const AlertModal = ({ isOpen, onClose, title, message }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[8000] p-4" dir="rtl">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 text-center"
+          >
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
+              <FaExclamationTriangle className="h-6 w-6 text-yellow-600" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mt-5">{title}</h3>
+            <p className="text-sm text-gray-500 mt-2">
+              {message}
+            </p>
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={onClose}
+                className="px-8 py-2 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700 cursor-pointer"
+              >
+                متوجه شدم
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+
 // ====================================================================
 // مودال فرم آدرس
-// ====================================================================
-// ====================================================================
-// مودال فرم آدرس (نسخه اصلاح‌شده)
-// ====================================================================
-// ====================================================================
-// مودال فرم آدرس (نسخه نهایی)
 // ====================================================================
 const AddressFormModal = ({
   isOpen,
@@ -296,6 +328,9 @@ const AddressFormModal = ({
   const [postalCode, setPostalCode] = useState("");
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
 
   const isEditMode = !!locationInfo?.id;
 
@@ -333,9 +368,35 @@ const AddressFormModal = ({
     fetchAddressFromNeshan();
   }, [isOpen, locationInfo]);
 
+  const handlePlakChange = (e) => {
+    const value = e.target.value;
+    if (/^[0-9]*$/.test(value) && value.length <= 15) {
+      setPlak(value);
+    }
+  };
+
+  const handlePostalCodeChange = (e) => {
+    const value = e.target.value;
+    if (/^[0-9]*$/.test(value) && value.length <= 10) {
+      setPostalCode(value);
+    }
+  };
+
+
   const handleSave = async () => {
-    if (!plak.trim() || !postalCode.trim() || address.startsWith("خطا")) {
-      alert("لطفا پلاک و کد پستی را وارد کنید.");
+    if (address.startsWith("خطا")) {
+      setAlertMessage("آدرس معتبر نیست. لطفاً به نقشه بازگشته و مکان جدیدی انتخاب کنید.");
+      setIsAlertModalOpen(true);
+      return;
+    }
+    if (!plak.trim()) {
+      setAlertMessage("لطفاً پلاک را وارد کنید.");
+      setIsAlertModalOpen(true);
+      return;
+    }
+    if (postalCode.trim().length !== 10) {
+      setAlertMessage("کد پستی وارد شده باید ۱۰ رقم باشد.");
+      setIsAlertModalOpen(true);
       return;
     }
 
@@ -385,119 +446,125 @@ const AddressFormModal = ({
   const disabledInput = `${baseInput} bg-gray-100 cursor-not-allowed`;
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[5000] p-4">
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="bg-white rounded-lg shadow-xl w-full max-w-md md:max-w-lg flex flex-col"
-            dir="rtl"
-          >
-            {isFetching ? (
-              <div className="h-[500px] flex flex-col items-center justify-center">
-                <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
-                <p className="mt-4 text-gray-600">در حال دریافت اطلاعات مکان...</p>
-              </div>
-            ) : (
-              <>
-                <div ref={imageContainerRef} className="relative w-full h-48 rounded-t-lg bg-gray-200 flex items-center justify-center overflow-hidden">
-                  {locationInfo?.mapImage ? (
-                    <>
-                      <img
-                        src={locationInfo.mapImage}
-                        alt="نمای نقشه مکان انتخاب شده"
-                        className="w-full h-full object-cover"
-                      />
-                      <img
-                        src={YadakchiLogo.src}
-                        alt="Yadakchi Logo"
-                        className="w-6 h-8 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 drop-shadow-lg"
-                      />
-                      <div className="absolute bottom-1/2 left-1/2 -translate-x-1/2 mb-9 bg-black/70 text-white text-xs font-bold py-1 px-3 rounded-full shadow-lg whitespace-nowrap">
-                        موقعیت شما
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                        <p className="text-white text-xs text-center truncate">{address}</p>
-                      </div>
-
-                      {/* ========== تغییر ۱: حذف شرط isEditMode برای نمایش همیشگی آیکون ویرایش ========== */}
-                      <button
-                        id="edit-map-icon-in-form"
-                        onClick={onBack}
-                        className="absolute top-2 right-2 z-10 p-2 bg-white/80 backdrop-blur-sm rounded-full text-gray-800 hover:bg-white hover:text-blue-600 transition-all duration-200 cursor-pointer"
-                        title="تغییر موقعیت روی نقشه"
-                      >
-                        <FaPencilAlt size={16} />
-                      </button>
-                    </>
-                  ) : (
-                    <div className="text-center text-gray-500 p-4">
-                      <p className="font-bold">ویرایش جزئیات آدرس</p>
-                      <p className="text-sm">برای انتخاب یا تغییر موقعیت، به نقشه بازگردید.</p>
-                    </div>
-                  )}
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[5000] p-4">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="bg-white rounded-lg shadow-xl w-full max-w-lg md:max-w-xl flex flex-col max-h-[95vh] overflow-y-auto"
+              dir="rtl"
+            >
+              {isFetching ? (
+                <div className="h-[500px] flex flex-col items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                  <p className="mt-4 text-gray-600">در حال دریافت اطلاعات مکان...</p>
                 </div>
+              ) : (
+                <>
+                  <div ref={imageContainerRef} className="relative w-full h-48 rounded-t-lg bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {locationInfo?.mapImage ? (
+                      <>
+                        <img
+                          src={locationInfo.mapImage}
+                          alt="نمای نقشه مکان انتخاب شده"
+                          className="w-full h-full object-cover"
+                        />
+                        <img
+                          src={YadakchiLogo.src}
+                          alt="Yadakchi Logo"
+                          className="w-6 h-8 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 drop-shadow-lg"
+                        />
+                        <div className="absolute bottom-1/2 left-1/2 -translate-x-1/2 mb-9 bg-black/70 text-white text-xs font-bold py-1 px-3 rounded-full shadow-lg whitespace-nowrap">
+                          موقعیت شما
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                          <p className="text-white text-xs text-center truncate">{address}</p>
+                        </div>
+                        <button
+                          id="edit-map-icon-in-form"
+                          onClick={onBack}
+                          className="absolute top-2 right-2 z-10 p-2 bg-white/80 backdrop-blur-sm rounded-full text-gray-800 hover:bg-white hover:text-blue-600 transition-all duration-200 cursor-pointer"
+                          title="تغییر موقعیت روی نقشه"
+                        >
+                          <FaPencilAlt size={16} />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="text-center text-gray-500 p-4">
+                        <p className="font-bold">ویرایش جزئیات آدرس</p>
+                        <p className="text-sm">برای انتخاب یا تغییر موقعیت، به نقشه بازگردید.</p>
+                      </div>
+                    )}
+                  </div>
 
-                <div className="p-4 sm:p-6 space-y-4">
-                  {/* ... بقیه فیلدهای فرم ... */}
-                   <div>
-                    <label className={baseLabel}>آدرس کامل (غیرقابل ویرایش)</label>
-                    <textarea value={address} readOnly rows="3" className={`${disabledInput} resize-none`}/>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className={baseLabel}>استان</label>
-                      <input type="text" value={province} disabled className={disabledInput}/>
-                    </div>
-                    <div>
-                      <label className={baseLabel}>شهر</label>
-                      <input type="text" value={city} disabled className={disabledInput}/>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label htmlFor="plak" className={baseLabel}>پلاک <span className="text-red-500">*</span></label>
-                      <input id="plak" type="text" value={plak} onChange={(e) => setPlak(e.target.value)} className={baseInput} required autoFocus/>
-                    </div>
+                  <div className="p-4 sm:p-6 space-y-4">
                      <div>
-                      <label htmlFor="postalCode" className={baseLabel}>کد پستی <span className="text-red-500">*</span></label>
-                      <input id="postalCode" type="text" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className={baseInput} required/>
+                      <label className={baseLabel}>آدرس کامل (غیرقابل ویرایش)</label>
+                      <textarea value={address} readOnly rows="3" className={`${disabledInput} resize-none`}/>
                     </div>
-                    <div>
-                      <label htmlFor="vahed" className={baseLabel}>واحد (اختیاری)</label>
-                      <input id="vahed" type="text" value={vahed} onChange={(e) => setVahed(e.target.value)} className={baseInput}/>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className={baseLabel}>استان</label>
+                        <input type="text" value={province} disabled className={disabledInput}/>
+                      </div>
+                      <div>
+                        <label className={baseLabel}>شهر</label>
+                        <input type="text" value={city} disabled className={disabledInput}/>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label htmlFor="plak" className={baseLabel}>پلاک <span className="text-red-500">*</span></label>
+                        <input id="plak" type="text" value={plak} onChange={handlePlakChange} className={baseInput} required autoFocus/>
+                      </div>
+                       <div>
+                        <label htmlFor="postalCode" className={baseLabel}>کد پستی <span className="text-red-500">*</span></label>
+                        <input id="postalCode" type="text" value={postalCode} onChange={handlePostalCodeChange} className={baseInput} required/>
+                      </div>
+                      <div>
+                        <label htmlFor="vahed" className={baseLabel}>واحد (اختیاری)</label>
+                        <input id="vahed" type="text" value={vahed} onChange={(e) => setVahed(e.target.value)} className={baseInput}/>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="p-4 bg-gray-50 border-t flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center">
-                  {/* ========== تغییر ۲: حذف شرط isEditMode برای نمایش همیشگی دکمه بازگشت ========== */}
-                  <button
-                    onClick={onBack}
-                    className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
-                  >
-                    <FaArrowRight />
-                    <span>بازگشت به نقشه</span>
-                  </button>
-                  
-                  <div className="flex gap-3 w-full sm:w-auto">
-                    <button onClick={onClose} className="w-1/2 sm:w-auto px-6 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors cursor-pointer">
-                      لغو
+                  <div className="p-4 bg-gray-50 border-t flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center flex-shrink-0">
+                    <button
+                      onClick={onBack}
+                      className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
+                    >
+                      <FaArrowRight />
+                      <span>بازگشت به نقشه</span>
                     </button>
-                    <button onClick={handleSave} disabled={isSaving} className="w-1/2 sm:w-auto px-6 py-2 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center justify-center disabled:opacity-50">
-                      {isSaving ? (<div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>) : (isEditMode ? "بروزرسانی" : "ذخیره آدرس")}
-                    </button>
+                    
+                    <div className="flex gap-3 w-full sm:w-auto">
+                      <button onClick={onClose} className="w-1/2 sm:w-auto px-6 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors cursor-pointer">
+                        لغو
+                      </button>
+                      <button onClick={handleSave} disabled={isSaving} className="w-1/2 sm:w-auto px-6 py-2 bg-blue-600 text-white font-bold text-[13px] rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center justify-center disabled:opacity-50">
+                        {isSaving ? (<div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin "></div>) : (isEditMode ? "بروزرسانی" : "ذخیره آدرس")}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AlertModal
+        isOpen={isAlertModalOpen}
+        onClose={() => setIsAlertModalOpen(false)}
+        title="خطای ورودی"
+        message={alertMessage}
+      />
+    </>
   );
 };
+
 // ====================================================================
 // مودال تایید حذف
 // ====================================================================
@@ -539,6 +606,7 @@ const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm }) => {
   );
 };
 
+
 // ====================================================================
 // مودال نمایش تصویر
 // ====================================================================
@@ -567,7 +635,7 @@ const ImageViewerModal = ({ isOpen, onClose, imageUrl }) => {
             />
             <button
               onClick={onClose}
-              className="absolute -top-3 -right-3 z-10 p-1.5 bg-white text-black rounded-full shadow-lg hover:scale-110 transition-transform"
+              className="absolute -top-3 -right-3 cursor-pointer z-10 p-1.5 bg-white text-black rounded-full shadow-lg hover:scale-110 transition-transform"
               aria-label="بستن تصویر"
             >
               <IoMdClose size={24} />
@@ -579,11 +647,9 @@ const ImageViewerModal = ({ isOpen, onClose, imageUrl }) => {
   );
 };
 
+
 // ====================================================================
 // کامپوننت اصلی
-// ====================================================================
-// ====================================================================
-// کامپوننت اصلی (نسخه اصلاح‌شده)
 // ====================================================================
 export default function UserAddressManager() {
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -672,13 +738,13 @@ export default function UserAddressManager() {
         }}
       >
         <motion.div
-          className="bg-white p-4 sm:p-6 rounded-lg shadow-md border-2 border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4"
+          className="bg-white p-4 sm:p-6 border-b-1 border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4"
           variants={{
             hidden: { y: 20, opacity: 0 },
             visible: { y: 0, opacity: 1 },
           }}
         >
-          <h2 className="text-xl sm:text-2xl font-bold border-b-2 sm:border-b-0 sm:border-l-2 border-gray-200 pb-2 sm:pb-0 sm:pl-4">
+          <h2 className=" sm:text-3xl font-bold border-b-2 sm:border-b-0  border-gray-200 pb-2 sm:pb-0 sm:pl-4">
             مدیریت آدرس‌ها
           </h2>
           <motion.button
@@ -700,7 +766,7 @@ export default function UserAddressManager() {
           }}
         >
           <motion.h3
-            className="text-xl font-semibold mb-4"
+            className="text-xl font-semibold mb-4 "
             variants={{
               hidden: { y: 20, opacity: 0 },
               visible: { y: 0, opacity: 1 },
@@ -711,7 +777,7 @@ export default function UserAddressManager() {
           <div className="space-y-4">
             {userAddresses.length === 0 ? (
               <motion.div
-                className="text-center py-10 px-6 bg-white rounded-lg shadow-md"
+                className="text-center py-10 px-6 bg-white rounded-lg shadow-md mt-5"
                 variants={{
                   hidden: { y: 20, opacity: 0 },
                   visible: { y: 0, opacity: 1 },
@@ -738,7 +804,7 @@ export default function UserAddressManager() {
                       hidden: { y: 20, opacity: 0 },
                       visible: { y: 0, opacity: 1 },
                     }}
-                    className="p-4 rounded-lg bg-white shadow-md flex flex-col sm:flex-row items-start justify-between gap-4"
+                    className="p-4 rounded-lg bg-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4"
                   >
                     {addr.mapImage && (
                       <div className="relative flex-shrink-0 w-full sm:w-auto">
@@ -749,15 +815,13 @@ export default function UserAddressManager() {
                             className="w-full h-32 sm:w-24 sm:h-24 object-cover rounded-md shadow-sm cursor-pointer hover:shadow-lg transition-shadow duration-200"
                           />
                         </button>
-                        {/* ========== دکمه ویرایش جدید ========== */}
                         <button
                           onClick={() => handleEditAddress(addr)}
-                          className="absolute top-1.5 right-1.5 z-10 p-1.5 bg-white/70 backdrop-blur-sm rounded-full text-gray-700 hover:text-blue-600 transition-colors"
+                          className="absolute top-1.5 right-1.5 z-10 p-1.5 cursor-pointer bg-white/70 backdrop-blur-sm rounded-full text-gray-700 hover:text-blue-600 transition-colors"
                           title="ویرایش موقعیت مکانی"
                         >
                           <FaPencilAlt size={14} />
                         </button>
-                        {/* ======================================= */}
                       </div>
                     )}
                     <div className="flex-grow">
