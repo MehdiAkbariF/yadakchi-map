@@ -460,30 +460,43 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
     if (!mapRef.current) return;
     const map = mapRef.current;
     let originalZoom = null;
+    let needRestoreZoom = false;
     // اگر زوم فعلی نزدیک به 16 نیست، زوم را روی 16 بگذار
     if (typeof map.getZoom === 'function') {
       originalZoom = map.getZoom();
       if (originalZoom < 15.5 || originalZoom > 16.5) {
+        needRestoreZoom = true;
         map.setZoom(16);
-        // کمی صبر کن تا نقشه رندر شود
-        await new Promise(res => setTimeout(res, 400));
       }
     }
-    map.once("idle", () => {
+
+    // تابعی که عکس می‌گیرد و زوم را برمی‌گرداند
+    const takeScreenshot = () => {
       const center = map.getCenter();
       const mapCanvas = map.getCanvas();
+      let mapImage = null;
       if (mapCanvas) {
-        const mapImage = mapCanvas.toDataURL("image/png");
-        onConfirm({ lat: center.lat, lng: center.lng, mapImage: mapImage });
-      } else {
-        onConfirm({ lat: center.lat, lng: center.lng, mapImage: null });
+        mapImage = mapCanvas.toDataURL("image/png");
       }
+      onConfirm({ lat: center.lat, lng: center.lng, mapImage });
       // اگر لازم بود زوم را برگردان
-      if (originalZoom !== null && (originalZoom < 15.5 || originalZoom > 16.5)) {
+      if (needRestoreZoom && originalZoom !== null) {
         map.setZoom(originalZoom);
       }
-    });
-    map.triggerRepaint();
+    };
+
+    // اگر زوم تغییر کرده، منتظر رویداد idle شو
+    if (needRestoreZoom) {
+      const onIdle = () => {
+        map.off("idle", onIdle);
+        takeScreenshot();
+      };
+      map.on("idle", onIdle);
+      map.triggerRepaint();
+    } else {
+      // اگر زوم تغییر نکرده، بلافاصله عکس بگیر
+      takeScreenshot();
+    }
   };
 
   return (
@@ -827,12 +840,12 @@ const AddressFormModal = ({
     <>
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[5000] p-4">
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[5000] p-4">
             <motion.div
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
-              className="bg-white rounded-lg shadow-xl w-full max-w-lg md:max-w-xl flex flex-col max-h-[95vh] overflow-y-auto"
+              className="bg-white rounded-lg shadow-xl w-full max-w-lg md:max-w-xl flex flex-col max-h-[95vh] overflow-y-auto sm:max-h-none sm:overflow-y-visible"
               dir="rtl"
             >
               {isFetching ? (
@@ -908,19 +921,19 @@ const AddressFormModal = ({
                       </div>
                     </div>
                   </div>
-                  <div className="p-4 bg-gray-50 border-t flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center flex-shrink-0">
-                    <button
+                  <div className="p-4 bg-gray-50 border-t border-t-gray-300 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center flex-shrink-0">
+                   
+                     <button onClick={onClose} className="w-1/2 sm:w-auto px-6 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors cursor-pointer">
+                        لغو
+                      </button>
+                    <div className="flex gap-3 w-full sm:w-auto">
+                      <button
                       onClick={onBack}
                       className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
                     >
                       <FaArrowRight />
                       <span>بازگشت به نقشه</span>
                     </button>
-                    
-                    <div className="flex gap-3 w-full sm:w-auto">
-                      <button onClick={onClose} className="w-1/2 sm:w-auto px-6 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors cursor-pointer">
-                        لغو
-                      </button>
                       <button onClick={handleSave} disabled={isSaving} className="w-1/2 sm:w-auto px-6 py-2 bg-blue-600 text-white font-bold text-[13px] rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center justify-center disabled:opacity-50">
                         {isSaving ? (<div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin "></div>) : (isEditMode ? "بروزرسانی" : "ذخیره آدرس")}
                       </button>
