@@ -1,26 +1,46 @@
 @import "tailwindcss";
 
-#mapid {
-  height: 98vh;
-  width: 100%;
-  z-index: 1;
-  position: relative;
-
-}
 
 /* Make sure Leaflet styles are properly applied */
-.leaflet-container {
-  height: 100%;
-  width: 100%;
-  
+
+
+
+@keyframes scalePulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
 }
 
-#map-controls {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 1000;
-  background-color: white;
-  padding: 10px;
-  border-radius: 5px;
+.scale-pulse {
+  animation: scalePulse 3s infinite;
+}
+
+@keyframes scalePulseColor {
+  0%, 100% {
+    transform: scale(1);
+    color: rgb(253, 212, 137);
+    background-color: transparent;
+  }
+  50% {
+    transform: scale(1.2);
+    color: orange;
+    background-color: transparent;
+    font-weight: bolder;
+  }
+}
+
+.scale-pulse-color {
+  animation: scalePulseColor 3s infinite;
+}
+
+  .static-branch-marker {
+  width: 24px;
+  height: 24px;
+  background-color: red; /* یا آیکون */
+  border-radius: 50%;
+  transform: translate(-50%, -100%);
+
 }
