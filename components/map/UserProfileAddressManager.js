@@ -258,7 +258,11 @@ const StoreInfoContainer = ({ isOpen, marker, onClose }) => {
         type: "line",
         source: "route",
         layout: { "line-join": "round", "line-cap": "round" },
-        paint: { "line-color": "#1976d2", "line-width": 5, "line-opacity": 0.9 },
+        paint: {
+          "line-color": "#1976d2",
+          "line-width": 5,
+          "line-opacity": 0.9,
+        },
       });
       mapPolylineRef.current = true;
     };
@@ -281,20 +285,24 @@ const StoreInfoContainer = ({ isOpen, marker, onClose }) => {
           className="absolute top-0 right-0 h-full w-full md:w-[30%] bg-white z-30 shadow-2xl flex flex-col"
           dir="rtl"
         >
-          <div className="p-4 flex-grow overflow-y-auto relative">
-            <button
+          <div className="p-4 flex-grow overflow-y-auto relative ">
+            <div className=" h-[5vh]  mb-5">          <button
               onClick={onClose}
-              className="absolute top-4 left-4 z-10 p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
+              className="  z-10 p-2 cursor-pointer bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
               aria-label="بستن پنل"
             >
               <FaTimes size={20} />
             </button>
+            </div>
+  
             {/* هدر پنل */}
             <div className="flex justify-between items-start mb-6">
               {/* سمت راست: نام فروشگاه و آیکون لوکیشن و شهر */}
               <div className="flex flex-col items-start gap-2">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-gray-900">{marker.name}</h3>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {marker.name}
+                  </h3>
                 </div>
               </div>
               {/* سمت چپ: گزارش */}
@@ -305,22 +313,27 @@ const StoreInfoContainer = ({ isOpen, marker, onClose }) => {
             </div>
             {/* عملکرد عالی */}
             <div className="mb-3">
-              <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">عملکرد عالی</span>
+              <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+                عملکرد عالی
+              </span>
             </div>
             {/* آدرس */}
             <div className="mb-3">
-              <span className="block text-sm text-gray-700 font-bold mb-1">آدرس:</span>
+              <span className="block text-sm text-gray-700 font-bold mb-1">
+                آدرس:
+              </span>
               <span className="block text-xs text-gray-600">{marker.desc}</span>
             </div>
             {/* قیمت و اطلاعات تماس */}
             <div className="flex justify-between items-center mt-6">
-              <div className="flex flex-col items-start">
-                <span className="text-xs text-gray-500 mb-1">قیمت:</span>
-                <span className="font-bold text-lg text-blue-700">توافقی</span>
-              </div>
+              
               <div className="flex flex-col items-end">
-                <span className="text-xs text-gray-500 mb-1">اطلاعات تماس:</span>
-                <span className="font-bold text-sm text-gray-800">0912xxxxxxx</span>
+                <span className="text-xs text-gray-500 mb-1">
+                  اطلاعات تماس:
+                </span>
+                <span className="font-bold text-sm text-gray-800">
+                  0912xxxxxxx
+                </span>
               </div>
             </div>
             {/* نقشه کوچک حذف شد */}
@@ -334,6 +347,9 @@ const StoreInfoContainer = ({ isOpen, marker, onClose }) => {
 // ====================================================================
 // مودال انتخاب مکان از روی نقشه
 // ====================================================================
+// ====================================================================
+// مودال انتخاب مکان از روی نقشه (با انیمیشن ورود از پایین)
+// ====================================================================
 const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
   const mapRef = useRef(null);
   const mapContainerRef = useRef(null);
@@ -342,174 +358,36 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
   const [selectedMarkerIdx, setSelectedMarkerIdx] = useState(null);
   const [nmp_mapboxgl, setNmpMapboxgl] = React.useState(null);
 
-  // مختصات مارکرهای ثابت یدکچی
+  // ... (بقیه منطق داخلی کامپوننت بدون تغییر باقی می‌ماند)
   const staticMarkers = [
     { lat: 35.6892, lng: 51.389, name: "فروشگاه اصغر", desc: "میدان آزادی" },
-    { lat: 35.6895, lng: 51.390, name: "فروشگاه امید", desc: "خیابان آزادی، نزدیک فروشگاه اصغر" },
+    { lat: 35.6895, lng: 51.39, name: "فروشگاه امید", desc: "خیابان آزادی، نزدیک فروشگاه اصغر" },
     { lat: 35.6888, lng: 51.388, name: "فروشگاه پارس", desc: "خیابان آزادی، روبروی فروشگاه اصغر" },
-    { lat: 35.6890, lng: 51.391, name: "فروشگاه یکتا", desc: "خیابان آزادی، کنار فروشگاه اصغر" },
+    { lat: 35.689, lng: 51.391, name: "فروشگاه یکتا", desc: "خیابان آزادی، کنار فروشگاه اصغر" },
     { lat: 35.7219, lng: 51.3347, name: "فروشگاه مهدی", desc: "میدان تجریش" },
     { lat: 35.7006, lng: 51.337, name: "فروشگاه رضا", desc: "میدان ونک" },
     { lat: 35.6467, lng: 51.389, name: "فروشگاه فلان", desc: "نازی‌آباد" },
   ];
-
-  // نگهداری رفرنس مارکرها برای حذف
   const staticMarkerRefs = useRef([]);
-
-  // داینامیک ایمپورت mapbox-gl
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      import("@neshan-maps-platform/mapbox-gl").then((mod) =>
-        setNmpMapboxgl(mod.default || mod)
-      );
-      import("@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css");
-    }
-  }, []);
-
-  // ساخت نقشه
-  useEffect(() => {
-    if (!isOpen || !nmp_mapboxgl || !mapContainerRef.current) return;
-    const centerPoint = initialCenter
-      ? [initialCenter.lng, initialCenter.lat]
-      : [51.389, 35.6892];
-    const initialZoom = initialCenter ? 16 : 12;
-
-    const map = new nmp_mapboxgl.Map({
-      mapType: "neshanVector",
-      container: mapContainerRef.current,
-      zoom: initialZoom,
-      pitch: 0,
-      center: centerPoint,
-      minZoom: 8,
-      maxZoom: 21,
-      trackResize: true,
-      mapKey: "web.1f545dea36314292a96a0da8ef9c2dc5",
-      poi: true,
-      traffic: false,
-      mapTypeControl: false,
-    });
-    setMapInstance(map);
-    mapRef.current = map;
-
-    return () => {
-      if (staticMarkerRefs.current.length > 0) {
-        staticMarkerRefs.current.forEach((marker) => marker.remove());
-        staticMarkerRefs.current = [];
-      }
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        setMapInstance(null);
-      }
-    };
-  }, [isOpen, initialCenter, nmp_mapboxgl]);
-
-  // افزودن/حذف مارکرهای ثابت
-  useEffect(() => {
-    if (!mapRef.current || !nmp_mapboxgl) return;
-    if (staticMarkerRefs.current.length > 0) {
-      staticMarkerRefs.current.forEach((marker) => marker.remove());
-      staticMarkerRefs.current = [];
-    }
-    if (showStaticMarkers) {
-      staticMarkerRefs.current = staticMarkers.map(
-        ({ lat, lng, name, desc }, idx) => {
-          const wrapper = document.createElement("div");
-          wrapper.className = "flex flex-col items-center cursor-pointer";
-          wrapper.style.position = "absolute";
-          wrapper.style.top = "0";
-          wrapper.style.left = "0";
-
-        // ... (inside MapPickerModal > useEffect)
-        const img = document.createElement("img");
-        img.src = YadakchiLogo.src;
-        img.alt = "Yadakchi Marker";
-        img.className = "w-6 h-6 object-contain transition-all duration-200";
-        img.style.transform = selectedMarkerIdx === idx ? 'scale(1.2)' : 'scale(1)';
-        img.style.opacity = selectedMarkerIdx === idx ? '1' : '0.7';
-        wrapper.appendChild(img);
-
-        const label = document.createElement("div");
-        label.innerText = name;
-        label.className = "bg-white text-black text-[11px] px-2 py-0.5 rounded-full mt-1 whitespace-nowrap border-1 border-orange-600";
-        wrapper.appendChild(label);
-// ...
-          wrapper.onclick = (e) => {
-            e.stopPropagation();
-            setSelectedMarkerIdx(idx);
-            mapRef.current.flyTo({ center: [lng, lat], zoom: 14 });
-          };
-
-          return new nmp_mapboxgl.Marker({ element: wrapper, anchor: 'bottom' })
-            .setLngLat([lng, lat])
-            .addTo(mapRef.current);
-        }
-      );
-    }
-  }, [showStaticMarkers, isOpen, selectedMarkerIdx, nmp_mapboxgl]);
+  React.useEffect(() => { if (typeof window !== "undefined") { import("@neshan-maps-platform/mapbox-gl").then((mod) => setNmpMapboxgl(mod.default || mod)); import("@neshan-maps-platform/mapbox-gl/dist/NeshanMapboxGl.css"); } }, []);
+  useEffect(() => { if (!isOpen || !nmp_mapboxgl || !mapContainerRef.current) return; const centerPoint = initialCenter ? [initialCenter.lng, initialCenter.lat] : [51.389, 35.6892]; const initialZoom = initialCenter ? 16 : 12; const map = new nmp_mapboxgl.Map({ mapType: "neshanVector", container: mapContainerRef.current, zoom: initialZoom, pitch: 0, center: centerPoint, minZoom: 8, maxZoom: 21, trackResize: true, mapKey: "web.1f545dea36314292a96a0da8ef9c2dc5", poi: true, traffic: false, mapTypeControl: false, }); setMapInstance(map); mapRef.current = map; return () => { if (staticMarkerRefs.current.length > 0) { staticMarkerRefs.current.forEach((marker) => marker.remove()); staticMarkerRefs.current = []; } if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; setMapInstance(null); } }; }, [isOpen, initialCenter, nmp_mapboxgl]);
+  useEffect(() => { if (!mapRef.current || !nmp_mapboxgl) return; if (staticMarkerRefs.current.length > 0) { staticMarkerRefs.current.forEach((marker) => marker.remove()); staticMarkerRefs.current = []; } if (showStaticMarkers) { staticMarkerRefs.current = staticMarkers.map( ({ lat, lng, name, desc }, idx) => { const wrapper = document.createElement("div"); wrapper.className = "flex flex-col items-center cursor-pointer"; wrapper.style.position = "absolute"; wrapper.style.top = "0"; wrapper.style.left = "0"; const img = document.createElement("img"); img.src = YadakchiLogo.src; img.alt = "Yadakchi Marker"; img.className = "w-6 h-6 object-contain transition-all duration-200"; img.style.transform = selectedMarkerIdx === idx ? "scale(1.2)" : "scale(1)"; img.style.opacity = selectedMarkerIdx === idx ? "1" : "0.7"; wrapper.appendChild(img); const label = document.createElement("div"); label.innerText = name; label.className = "bg-white text-black text-[11px] px-2 py-0.5 rounded-full mt-1 whitespace-nowrap border-1 border-orange-600"; wrapper.appendChild(label); wrapper.onclick = (e) => { e.stopPropagation(); setSelectedMarkerIdx(idx); mapRef.current.flyTo({ center: [lng, lat], zoom: 14 }); }; return new nmp_mapboxgl.Marker({ element: wrapper, anchor: "bottom" }) .setLngLat([lng, lat]) .addTo(mapRef.current); } ); } }, [showStaticMarkers, isOpen, selectedMarkerIdx, nmp_mapboxgl]);
+  useEffect(() => { if (mapRef.current) { const timer = setTimeout(() => { mapRef.current.resize(); }, 300); return () => clearTimeout(timer); } }, [selectedMarkerIdx]);
+  useEffect(() => { if (!mapRef.current) return; const handleMapClick = () => { setSelectedMarkerIdx(null); }; mapRef.current.on("click", handleMapClick); return () => { if (mapRef.current) { mapRef.current.off("click", handleMapClick); } }; }, [isOpen]);
+  const handleConfirmLocation = async () => { if (!mapRef.current) return; const map = mapRef.current; let originalZoom = map.getZoom(); let needRestoreZoom = false; if (originalZoom < 15.5 || originalZoom > 16.5) { needRestoreZoom = true; map.setZoom(16); } const takeScreenshot = () => { const center = map.getCenter(); const mapCanvas = map.getCanvas(); const mapImage = mapCanvas ? mapCanvas.toDataURL("image/png") : null; onConfirm({ lat: center.lat, lng: center.lng, mapImage }); if (needRestoreZoom) { map.setZoom(originalZoom); } }; map.once("idle", takeScreenshot); map.triggerRepaint(); };
   
-  // تغییر سایز نقشه هنگام باز/بسته شدن پنل اطلاعات
-  useEffect(() => {
-    if (mapRef.current) {
-      // یک تاخیر کوتاه برای اطمینان از اتمام انیمیشن
-      const timer = setTimeout(() => {
-        mapRef.current.resize();
-      }, 300); // زمان انیمیشن 300ms است
-      return () => clearTimeout(timer);
-    }
-  }, [selectedMarkerIdx]);
-
-
-  // بستن پنل اطلاعات با کلیک روی نقشه
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const handleMapClick = () => {
-      setSelectedMarkerIdx(null);
-    };
-    mapRef.current.on("click", handleMapClick);
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.off("click", handleMapClick);
-      }
-    };
-  }, [isOpen]);
-
-  const handleConfirmLocation = async () => {
-    if (!mapRef.current) return;
-    const map = mapRef.current;
-    let originalZoom = map.getZoom();
-    let needRestoreZoom = false;
-
-    if (originalZoom < 15.5 || originalZoom > 16.5) {
-      needRestoreZoom = true;
-      map.setZoom(16);
-    }
-
-    const takeScreenshot = () => {
-      const center = map.getCenter();
-      const mapCanvas = map.getCanvas();
-      const mapImage = mapCanvas ? mapCanvas.toDataURL("image/png") : null;
-      onConfirm({ lat: center.lat, lng: center.lng, mapImage });
-      if (needRestoreZoom) {
-        map.setZoom(originalZoom);
-      }
-    };
-
-    map.once("idle", takeScreenshot);
-    map.triggerRepaint(); 
-  };
-  
-
   return (
     <>
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[4000] p-2 sm:p-4">
+          <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-[4000] sm:p-4">
+            {/* *** تغییر اصلی اینجاست: انیمیشن از پایین به بالا *** */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white rounded-lg shadow-xl w-full max-w-lg md:max-w-4xl lg:max-w-6xl h-[90vh] flex flex-col overflow-hidden border-gray-200 p-2 sm:p-4"
+              initial={{ y: "100vh", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100vh", opacity: 0 }}
+              transition={{ type: "spring", stiffness: 250, damping: 30 }}
+              className="relative bg-white rounded-t-2xl sm:rounded-lg shadow-xl w-full max-w-lg md:max-w-4xl lg:max-w-6xl h-[95vh] sm:h-[90vh] flex flex-col overflow-hidden border-gray-200 p-2 sm:p-4"
             >
               <button
                 onClick={onClose}
@@ -528,11 +406,11 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
                 </p>
               </div>
 
+              {/* بقیه محتوای مودال بدون تغییر */}
               <div className="relative flex-grow bg-gray-200 rounded-md overflow-hidden flex flex-row-reverse">
-                {/* کانتینر نقشه اصلی */}
                 <div
                   className={`h-full relative transition-all duration-300 ease-in-out ${
-                    selectedMarkerIdx !== null ? 'w-full md:w-[70%]' : 'w-full'
+                    selectedMarkerIdx !== null ? "w-full md:w-[70%]" : "w-full"
                   }`}
                 >
                   <div ref={mapContainerRef} className="h-full w-full" />
@@ -554,7 +432,12 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
                     dir="rtl"
                   >
                     <div className="flex items-center rounded-lg p-2 gap-2 bg-black/40">
-                     <img src={YadakchiLogo.src} width={25} height={25} alt="Yadakchi Logo" />
+                      <img
+                        src={YadakchiLogo.src}
+                        width={25}
+                        height={25}
+                        alt="Yadakchi Logo"
+                      />
                       <label className="flex items-center gap-1 cursor-pointer select-none text-xs text-white">
                         <input
                           type="checkbox"
@@ -569,7 +452,6 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
                   </div>
                 </div>
 
-                {/* پنل اطلاعات فروشگاه */}
                 <StoreInfoContainer
                   isOpen={selectedMarkerIdx !== null}
                   marker={
@@ -602,7 +484,6 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialCenter }) => {
     </>
   );
 };
-
 
 // ====================================================================
 // بقیه کامپوننت‌ها بدون تغییر باقی می‌مانند
@@ -1134,30 +1015,33 @@ export default function UserAddressManager() {
     [addressToEdit]
   );
 
-  const handleSaveAddress = useCallback((addressData) => {
-    if (addressData.id) {
-      setUserAddresses((prev) =>
-        prev.map((addr) => (addr.id === addressData.id ? addressData : addr))
-      );
-      setIsFormModalOpen(false);
-      setSelectedLocationInfo(null);
-      setAddressToEdit(null);
-      return;
-    }
+  const handleSaveAddress = useCallback(
+    (addressData) => {
+      if (addressData.id) {
+        setUserAddresses((prev) =>
+          prev.map((addr) => (addr.id === addressData.id ? addressData : addr))
+        );
+        setIsFormModalOpen(false);
+        setSelectedLocationInfo(null);
+        setAddressToEdit(null);
+        return;
+      }
 
-    const newId = Date.now();
-    const newAddress = { ...addressData, id: newId };
-    if (userAddresses.length === 0) {
-      setUserAddresses([newAddress]);
-      setDefaultAddressId(newId);
-      setIsFormModalOpen(false);
-      setSelectedLocationInfo(null);
-      setAddressToEdit(null);
-    } else {
-      setPendingAddress(newAddress);
-      setShowDefaultModal(true);
-    }
-  }, [userAddresses]);
+      const newId = Date.now();
+      const newAddress = { ...addressData, id: newId };
+      if (userAddresses.length === 0) {
+        setUserAddresses([newAddress]);
+        setDefaultAddressId(newId);
+        setIsFormModalOpen(false);
+        setSelectedLocationInfo(null);
+        setAddressToEdit(null);
+      } else {
+        setPendingAddress(newAddress);
+        setShowDefaultModal(true);
+      }
+    },
+    [userAddresses]
+  );
 
   const confirmSetDefault = () => {
     if (pendingAddress) {
@@ -1391,7 +1275,7 @@ export default function UserAddressManager() {
           </div>
         </motion.div>
       </motion.div>
-      
+
       {/* مودال انتخاب پیش‌فرض */}
       <AnimatePresence>
         {showDefaultModal && (
