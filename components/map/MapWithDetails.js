@@ -1,31 +1,26 @@
+// --- ایمپورت‌های مورد نیاز ---
 "use client";
 
-// --- ایمپورت‌های مورد نیاز ---
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import { MdArrowBackIos } from "react-icons/md";
-import {
-  FaMapMarkerAlt,
-  FaArrowRight,
-  FaFlag,
-  FaTimes,
-  FaPhone,
-  FaWhatsapp,
-  FaChevronLeft,
-  FaChevronRight,
-} from "react-icons/fa";
-import { MdSearch } from "react-icons/md";
+import { FaMapMarkerAlt, FaFlag, FaPhone, FaWhatsapp } from "react-icons/fa";
 import YadakchiLogo from "/public/Y.png";
 import { SlArrowDown } from "react-icons/sl";
 
 // ====================================================================
-// کامپوننت‌های جستجو و مودال (بدون تغییر)
+// کامپوننت جستجوی نشان
 // ====================================================================
 const NeshanSearchControl = ({ map, apiKey }) => {
   return null;
 };
+
+// ====================================================================
+// مودال گزارش فروشگاه
+// ====================================================================
 const ReportModal = ({ isOpen, onClose, store, product }) => {
   if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50">
       <div
@@ -62,7 +57,155 @@ const ReportModal = ({ isOpen, onClose, store, product }) => {
 };
 
 // ====================================================================
-// کامپوننت اسلایدر برای موبایل (بازگشت به ظاهر اولیه)
+// کامپوننت کارت موبایل (جدا و بهینه‌سازی شده)
+// ====================================================================
+const StoreCard = React.memo(
+  ({ store, isSelected, onStoreSelect, onReportClick }) => {
+    const cardAnimationVariants = {
+      initial: { opacity: 0, y: 50 },
+      animate: {
+        opacity: 1,
+        y: 0,
+        scale: isSelected ? 1.05 : 1,
+        transition: {
+          y: { type: "tween", ease: "easeOut", duration: 0.4 },
+          opacity: { type: "tween", ease: "easeOut", duration: 0.3 },
+          scale: { type: "spring", stiffness: 300, damping: 25 },
+        },
+      },
+    };
+
+    return (
+      <motion.div
+        layout
+        dir="rtl"
+        className="flex-shrink-0 w-[80vw] max-w-xs flex flex-col rounded-xl shadow-lg bg-white overflow-hidden p-2 lg:p-4"
+        style={{
+          willChange: "transform, opacity",
+          border: isSelected ? "2px solid #3b82f6" : "1px solid #e5e7eb",
+          touchAction: "pan-y",
+        }}
+        variants={cardAnimationVariants}
+        initial="initial"
+        animate="animate"
+        custom={{ isSelected }}
+      >
+        <motion.div
+          onTap={onStoreSelect}
+          className="w-full text-right p-1 lg:p-2 cursor-pointer flex flex-col"
+        >
+          <div>
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex flex-col items-start gap-1">
+                <span className="font-bold text-sm lg:text-base text-gray-900">
+                  {store.name}
+                </span>
+                <span className="text-gray-500 flex items-center gap-1 text-[10px] lg:text-xs">
+                  <FaMapMarkerAlt size={10} /> {store.city}
+                </span>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReportClick(store);
+                }}
+                className="flex-shrink-0 flex cursor-pointer items-center gap-1 text-[9px] lg:text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md hover:bg-gray-200 group"
+              >
+                <FaFlag size={15} className="group-hover:text-red-600 " />{" "}
+                <span className="text-xl p-1">گزارش</span>
+              </button>
+            </div>
+            <div className="mb-2">
+              <span className="text-green-600 font-semibold text-xs lg:text-sm">
+                <span className="text-black text-[10px] lg:text-xs">
+                  عملکرد{" "}
+                </span>
+                {store.performance}
+              </span>
+            </div>
+            <p className="text-[11px] lg:text-sm text-gray-700 mb-3">
+              {store.desc}
+            </p>
+          </div>
+          <div className="flex justify-between items-center mt-auto">
+            <span className="text-sm lg:text-base font-bold text-gray-800">
+              {store.price} تومان
+            </span>
+            <div className="flex items-center gap-1 lg:gap-2 text-blue-800">
+              <span className="text-[11px] lg:text-sm">اطلاعات تماس</span>
+              <motion.div animate={{ rotate: isSelected ? 180 : 0 }}>
+                <SlArrowDown size={12} />
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+        <AnimatePresence initial={false}>
+          {isSelected && (
+            <motion.div
+              key="content"
+              initial={{ opacity: 0, maxHeight: 0 }}
+              animate={{
+                opacity: 1,
+                maxHeight: "300px",
+                transition: { duration: 0.2, ease: "easeInOut" },
+              }}
+              // FIX 3: تعریف یک transition مجزا و سریع‌تر فقط برای حالت exit
+              exit={{
+                opacity: 0,
+                maxHeight: 0,
+                transition: {
+                  duration: 0.1, // زمان کمتر برای بسته شدن
+                  ease: "easeOut",
+                },
+              }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="overflow-hidden flex items-center gap-2 flex-col w-full pt-2"
+            >
+              <a
+                href={`tel:${store.phone}`}
+                className="py-2.5 sm:py-2 px-4 bg-blue-700 text-white rounded-lg w-[90%] flex items-center justify-between text-sm sm:text-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <FaPhone size={14} />
+                  <span>تماس: {store.phone}</span>
+                </div>
+                <MdArrowBackIos size={14} />
+              </a>
+              <a
+                href={`https://wa.me/${store.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 sm:py-2 px-4 bg-green-600 text-white rounded-lg w-[90%] flex items-center justify-between text-sm sm:text-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <FaWhatsapp size={14} />
+                  <span>واتساپ</span>
+                </div>
+                <MdArrowBackIos size={14} />
+              </a>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 sm:py-2 px-4 bg-purple-700 text-white rounded-lg w-[90%] flex items-center justify-between text-sm sm:text-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <FaMapMarkerAlt size={14} />
+                  <span>مسیریابی</span>
+                </div>
+                <MdArrowBackIos size={14} />
+              </a>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
+  }
+);
+StoreCard.displayName = "StoreCard";
+
+// ====================================================================
+// کامپوننت اسلایدر موبایل
 // ====================================================================
 const MobileStoreSlider = ({
   stores,
@@ -80,11 +223,9 @@ const MobileStoreSlider = ({
   useEffect(() => {
     const updateSliderState = () => {
       if (!viewportRef.current || !sliderRef.current) return;
-
       const viewportWidth = viewportRef.current.offsetWidth;
       const sliderWidth = sliderRef.current.scrollWidth;
       const scrollableWidth = sliderWidth - viewportWidth;
-
       const newConstraints = {
         right: 0,
         left: scrollableWidth > 0 ? -scrollableWidth : 0,
@@ -92,21 +233,17 @@ const MobileStoreSlider = ({
       setConstraints(newConstraints);
 
       if (selectedStoreIdx > -1) {
-        const originalIndex = selectedStoreIdx;
-        const reversedIndex = stores.length - 1 - originalIndex;
+        const reversedIndex = stores.length - 1 - selectedStoreIdx;
         const cardNode = sliderRef.current.children[reversedIndex];
-
         if (cardNode) {
           const cardWidth = cardNode.offsetWidth;
           const cardOffsetLeft = cardNode.offsetLeft;
-
           let targetX = viewportWidth / 2 - cardOffsetLeft - cardWidth / 2;
           targetX = Math.max(targetX, newConstraints.left);
           targetX = Math.min(targetX, newConstraints.right);
-
           controls.start({
             x: targetX,
-            transition: { type: "spring", stiffness: 350, damping: 40 },
+            transition: { type: "spring", stiffness: 350, damping: 35 },
           });
         }
       }
@@ -114,7 +251,6 @@ const MobileStoreSlider = ({
 
     const timer = setTimeout(updateSliderState, 150);
     window.addEventListener("resize", updateSliderState);
-
     return () => {
       clearTimeout(timer);
       window.removeEventListener("resize", updateSliderState);
@@ -123,17 +259,17 @@ const MobileStoreSlider = ({
 
   return (
     <div
-      className="h-full w-full flex flex-col z-20 "
+      className="h-full w-full flex flex-col z-20"
       onClick={(e) => e.stopPropagation()}
     >
       <div
         ref={viewportRef}
-        className="relative flex-grow flex items-center overflow-hidden cursor-grab active:cursor-grabbing"
+        className="relative flex-grow flex items-end pb-4 overflow-hidden cursor-grab active:cursor-grabbing"
         dir="ltr"
       >
         <motion.div
           ref={sliderRef}
-          className="flex gap-4 px-4 h-auto"
+          className="flex items-end gap-4 px-4 h-auto pointer-events-auto"
           drag="x"
           dragConstraints={constraints}
           dragTransition={{ bounceStiffness: 400, bounceDamping: 25 }}
@@ -143,131 +279,13 @@ const MobileStoreSlider = ({
           {reversedStores.map((store, reversedIndex) => {
             const originalIndex = stores.length - 1 - reversedIndex;
             return (
-              <motion.div
+              <StoreCard
                 key={store.id || originalIndex}
-                dir="rtl"
-                className="flex-shrink-0 w-[80vw] max-w-xs flex flex-col rounded-xl shadow-lg bg-white min-h-[35vh] overflow-y-auto p-2 lg:p-4"
-                style={{
-                  border:
-                    selectedStoreIdx === originalIndex
-                      ? "2px solid #3b82f6"
-                      : "1px solid #e5e7eb",
-                  touchAction: "pan-y",
-                }}
-                initial={{ opacity: 0, x: "-100vw" }}
-                animate={{
-                  opacity: 1,
-                  x: 0,
-                  scale: selectedStoreIdx === originalIndex ? 1.05 : 1,
-                  y: selectedStoreIdx === originalIndex ? -20 : 0,
-                }}
-                // *** تغییر اصلی اینجاست ***
-                transition={{
-                  type: "spring",
-                  // سختی فنر کاهش یافته تا انیمیشن کندتر شود
-                  stiffness: 100, // قبلا 400 بود
-                  // میرایی متناسب با سختی جدید تنظیم شده
-                  damping: 5, // قبلا 30 بود
-                  // تاخیر بین کارت‌ها افزایش یافته تا ورودشان کندتر باشد
-                  delay:
-                    selectedStoreIdx === -1
-                      ? (reversedStores.length - 1 - reversedIndex) * 0.15
-                      : 0, // ضریب از 0.1 به 0.15 تغییر کرد
-                }}
-              >
-                {/* محتوای داخلی کارت بدون تغییر */}
-                <motion.div
-                  onTap={() => onStoreSelect(store, originalIndex)}
-                  className="w-full text-right p-1 lg:p-2 cursor-pointer flex flex-col flex-grow"
-                >
-                  <div className="flex-grow">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex flex-col items-start gap-1">
-                        <span className="font-bold text-sm lg:text-base text-gray-900">
-                          {store.name}
-                        </span>
-                        <span className="text-gray-500 flex items-center gap-1 text-[10px] lg:text-xs">
-                          <FaMapMarkerAlt size={10} /> {store.city}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onReportClick(store);
-                        }}
-                        className="flex-shrink-0 flex cursor-pointer items-center gap-1 text-[9px] lg:text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md hover:bg-gray-200"
-                      >
-                        <FaFlag size={10} /> <span>گزارش</span>
-                      </button>
-                    </div>
-                    <div className="mb-2">
-                      <span className="text-green-600 font-semibold text-xs lg:text-sm">
-                        <span className="text-black text-[10px] lg:text-xs">
-                          عملکرد{" "}
-                        </span>
-                        {store.performance}
-                      </span>
-                    </div>
-                    <p className="text-[11px] lg:text-sm text-gray-700 mb-3">
-                      {store.desc}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-between items-center mt-auto">
-                    <span className="text-sm lg:text-base font-bold text-gray-800">
-                      {store.price} تومان
-                    </span>
-                    <div className="flex items-center gap-1 lg:gap-2 text-blue-800">
-                      <span className="text-[11px] lg:text-sm">
-                        اطلاعات تماس
-                      </span>
-                      {selectedStoreIdx === originalIndex ? (
-                        <SlArrowDown className="transition-transform" />
-                      ) : (
-                        <MdArrowBackIos size={14} />
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-                <AnimatePresence>
-                  {selectedStoreIdx === originalIndex && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="flex items-center gap-1.5 flex-col w-full pt-2"
-                    >
-                      <a
-                        href={`tel:${store.phone}`}
-                        className="p-2.5 sm:p-2 bg-blue-700 text-white rounded-lg w-[90%] flex items-center justify-between text-sm sm:text-xs"
-                      >
-                        <FaPhone size={14} /> <span>تماس: {store.phone}</span>{" "}
-                        <MdArrowBackIos size={14} />
-                      </a>
-                      <a
-                        href={`https://wa.me/${store.whatsapp}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2.5 sm:p-2 bg-green-600 text-white rounded-lg w-[90%] flex items-center justify-between text-sm sm:text-xs"
-                      >
-                        <FaWhatsapp size={14} />
-                        <span>واتساپ</span>
-                        <MdArrowBackIos size={14} />
-                      </a>
-                      <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2.5 sm:p-2 bg-purple-700 text-white rounded-lg w-[90%] flex items-center justify-between text-sm sm:text-xs"
-                      >
-                        <FaMapMarkerAlt size={14} />
-                        <span>مسیریابی</span>
-                        <MdArrowBackIos size={14} />
-                      </a>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
+                store={store}
+                isSelected={selectedStoreIdx === originalIndex}
+                onStoreSelect={() => onStoreSelect(store, originalIndex)}
+                onReportClick={onReportClick}
+              />
             );
           })}
         </motion.div>
@@ -277,13 +295,138 @@ const MobileStoreSlider = ({
 };
 
 // ====================================================================
-// کامپوننت سایدبار برای دسکتاپ (بدون تغییر)
+// آیتم لیست دسکتاپ (جدا و بهینه‌سازی شده)
 // ====================================================================
+const DesktopStoreListItem = React.memo(
+  ({ store, isSelected, onStoreSelect, onReportClick }) => {
+    const listItemVariants = {
+      hidden: { y: 20, opacity: 0 },
+      visible: {
+        y: 0,
+        opacity: 1,
+        transition: { type: "spring", stiffness: 300, damping: 30 },
+      },
+    };
+
+    return (
+      <motion.div
+        variants={listItemVariants}
+        layout
+        onClick={onStoreSelect}
+        className={`w-full text-right p-3 border-b hover:bg-gray-100 transition-colors cursor-pointer ${
+          isSelected
+            ? "border-r-4 border-r-blue-500 bg-blue-50"
+            : "border-r-4 border-r-transparent border-gray-200"
+        }`}
+        style={{ willChange: "transform, opacity" }}
+      >
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex flex-col items-start gap-1">
+            <span className="font-bold text-sm lg:text-base text-gray-900">
+              {store.name}
+            </span>
+            <span className="text-gray-500 flex items-center gap-1 text-xs">
+              <FaMapMarkerAlt size={11} /> {store.city}
+            </span>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onReportClick(store);
+            }}
+            className="flex-shrink-0 flex cursor-pointer items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md hover:bg-gray-200 group"
+          >
+            <FaFlag size={11} className="group-hover:text-red-600" />{" "}
+            <span className="text-md p-1">گزارش</span>
+          </button>
+        </div>
+        <div className="mb-2">
+          <span className="text-green-600 font-semibold text-xs lg:text-sm">
+            <span className="text-black text-xs">عملکرد </span>
+            {store.performance}
+          </span>
+        </div>
+        <p className="text-xs lg:text-sm text-gray-700 mb-3">{store.desc}</p>
+        <div className="flex justify-between items-center">
+          <span className="text-sm lg:text-base font-bold text-gray-800">
+            {store.price} تومان
+          </span>
+          <div className="flex items-center gap-2 text-blue-800">
+            <span className="text-xs lg:text-sm">اطلاعات تماس</span>
+            {isSelected ? (
+              <SlArrowDown className="transition-transform" />
+            ) : (
+              <MdArrowBackIos size={14} />
+            )}
+          </div>
+        </div>
+        <AnimatePresence initial={false}>
+          {isSelected && (
+            <motion.div
+              key="content"
+              initial={{ opacity: 0, maxHeight: 0 }}
+              animate={{
+                opacity: 1,
+                maxHeight: "300px",
+                transition: { duration: 0.4, ease: "easeInOut" },
+              }}
+              // FIX 3: تعریف یک transition مجزا و سریع‌تر فقط برای حالت exit
+              exit={{
+                opacity: 0,
+                maxHeight: 0,
+                transition: {
+                  duration: 0.2, // زمان کمتر برای بسته شدن
+                  ease: "easeOut",
+                },
+              }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="overflow-hidden flex items-center gap-2 flex-col w-full pt-2"
+            >
+              <a
+                href={`tel:${store.phone}`}
+                className="py-2 px-4 bg-blue-700 text-white rounded-lg w-[90%] flex items-center justify-between text-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <FaPhone size={14} />
+                  <span>تماس: {store.phone}</span>
+                </div>
+                <MdArrowBackIos size={14} />
+              </a>
+              <a
+                href={`https://wa.me/${store.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2 px-4 bg-green-600 text-white rounded-lg w-[90%] flex items-center justify-between text-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <FaWhatsapp size={14} />
+                  <span>واتساپ</span>
+                </div>
+                <MdArrowBackIos size={14} />
+              </a>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2 px-4 bg-purple-700 text-white rounded-lg w-[90%] flex items-center justify-between text-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <FaMapMarkerAlt size={14} />
+                  <span>مسیریابی</span>
+                </div>
+                <MdArrowBackIos size={14} />
+              </a>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
+  }
+);
+DesktopStoreListItem.displayName = "DesktopStoreListItem";
+
 // ====================================================================
-// کامپوننت سایدبار برای دسکتاپ (با انیمیشن‌های جدید)
-// ====================================================================
-// ====================================================================
-// کامپوننت سایدبار برای دسکتاپ (با تأخیر اصلاح‌شده)
+// کامپوننت سایدبار دسکتاپ
 // ====================================================================
 const DesktopStoreListSidebar = ({
   stores,
@@ -291,144 +434,38 @@ const DesktopStoreListSidebar = ({
   selectedStoreIdx,
   onReportClick,
 }) => {
-  // تعریف Variants برای انیمیشن‌های لیست
   const listContainerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        // *** تغییر اصلی اینجاست ***
-        // تاخیر به اندازه مدت زمان انیمیشن والد (سایدبار)
-        delayChildren: 0.5,
-        // تاخیر بین انیمیشن هر کارت
-        staggerChildren: 0.2,
-      },
-    },
-  };
-
-  const listItemVariants = {
-    hidden: { y: 30, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
+        staggerChildren: 0.07,
       },
     },
   };
 
   return (
-    // مرحله ۱: انیمیشن ورود کل سایدبار از سمت راست
     <motion.div
-      className="h-full w-full bg-white shadow-2xl flex flex-col z-20  p-3"
+      className="h-full w-full bg-white shadow-2xl flex flex-col z-20"
       dir="rtl"
-      // این انیمیشن 0.5 ثانیه طول می‌کشد
     >
-      <header className="flex justify-between items-center p-3 border-b border-gray-200">
+      <header className="flex justify-between items-center p-4 border-b border-gray-200">
         <span className="font-bold text-base lg:text-lg">لیست فروشگاه‌ها</span>
       </header>
-
-      {/* مرحله ۲: کانتینر کارت‌ها که انیمیشن فرزندان را مدیریت می‌کند */}
       <motion.div
-        className="flex-grow overflow-y-auto p-1"
+        className="flex-grow overflow-y-auto"
         variants={listContainerVariants}
         initial="hidden"
         animate="visible"
       >
         {stores.map((store, index) => (
-          // مرحله ۳: انیمیشن هر کارت که از پایین وارد می‌شود
-          <motion.div
-            key={index}
-            variants={listItemVariants} // از variants تعریف شده استفاده می‌کند
-            onClick={() => onStoreSelect(store, index)}
-            className={`w-full text-right p-3 border-b hover:bg-gray-100 transition-colors cursor-pointer  ${
-              selectedStoreIdx === index
-                ? "border-1 border-blue-500"
-                : "border-gray-200"
-            }`}
-          >
-            {/* محتوای کارت بدون تغییر باقی می‌ماند */}
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex flex-col items-start gap-1">
-                <span className="font-bold text-sm lg:text-base text-gray-900">
-                  {store.name}
-                </span>
-                <span className="text-gray-500 flex items-center gap-1 text-xs">
-                  <FaMapMarkerAlt size={11} /> {store.city}
-                </span>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onReportClick(store);
-                }}
-                className="flex-shrink-0 flex cursor-pointer items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md hover:bg-gray-200"
-              >
-                <FaFlag size={11} /> <span>گزارش</span>
-              </button>
-            </div>
-            <div className="mb-2">
-              <span className="text-green-600 font-semibold text-xs lg:text-sm">
-                <span className="text-black text-xs">عملکرد </span>
-                {store.performance}
-              </span>
-            </div>
-            <p className="text-xs lg:text-sm text-gray-700 mb-3">
-              {store.desc}
-            </p>
-            <div className="flex justify-between items-center">
-              <span className="text-sm lg:text-base font-bold text-gray-800">
-                {store.price} تومان
-              </span>
-              <div className="flex items-center gap-2 text-blue-800">
-                <span className="text-xs lg:text-sm">اطلاعات تماس</span>
-                {selectedStoreIdx === index ? (
-                  <SlArrowDown className="transition-transform" />
-                ) : (
-                  <MdArrowBackIos size={14} />
-                )}
-              </div>
-            </div>
-            <AnimatePresence>
-              {selectedStoreIdx === index && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="flex items-center gap-1.5 flex-col w-full pt-2"
-                >
-                  <a
-                    href={`tel:${store.phone}`}
-                    className="p-2 bg-blue-700 text-white rounded-lg w-[90%] flex items-center justify-between text-xs"
-                  >
-                    <FaPhone size={14} /> <span>تماس: {store.phone}</span>{" "}
-                    <MdArrowBackIos size={14} />
-                  </a>
-                  <a
-                    href={`https://wa.me/${store.whatsapp}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 bg-green-600 text-white rounded-lg w-[90%] flex items-center justify-between text-xs"
-                  >
-                    <FaWhatsapp size={14} />
-                    <span>واتساپ</span>
-                    <MdArrowBackIos size={14} />
-                  </a>
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 bg-purple-700 text-white rounded-lg w-[90%] flex items-center justify-between text-xs"
-                  >
-                    <FaMapMarkerAlt size={14} />
-                    <span>مسیریابی</span>
-                    <MdArrowBackIos size={14} />
-                  </a>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+          <DesktopStoreListItem
+            key={store.id || index}
+            store={store}
+            isSelected={selectedStoreIdx === index}
+            onStoreSelect={() => onStoreSelect(store, index)}
+            onReportClick={onReportClick}
+          />
         ))}
       </motion.div>
     </motion.div>
@@ -436,7 +473,7 @@ const DesktopStoreListSidebar = ({
 };
 
 // ====================================================================
-// کامپوننت اصلی صفحه (بدون تغییر)
+// کامپوننت اصلی صفحه
 // ====================================================================
 export default function MapWithStoreListPage({ initialCenter = null }) {
   const mapRef = useRef(null);
@@ -445,28 +482,26 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
   const [selectedMarkerIdx, setSelectedMarkerIdx] = useState(-1);
   const [nmp_mapboxgl, setNmpMapboxgl] = React.useState(null);
   const staticMarkerRefs = useRef([]);
-
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [storeToReport, setStoreToReport] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
-
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   useEffect(() => {
     const checkDevice = () => {
-      const mobileCheck = window.innerWidth < 1024;
+      const mobileCheck =
+        typeof window !== "undefined" && window.innerWidth < 1024;
       setIsMobile(mobileCheck);
-      setIsSheetOpen(mobileCheck);
+      if (mobileCheck) {
+        setIsSheetOpen(true);
+      }
     };
     checkDevice();
     window.addEventListener("resize", checkDevice);
     return () => window.removeEventListener("resize", checkDevice);
   }, []);
 
-  const currentProduct = {
-    name: "گیربکس پژو فرانسوی",
-  };
-
+  const currentProduct = { name: "گیربکس پژو فرانسوی" };
   const staticMarkers = [
     {
       id: 1,
@@ -540,7 +575,7 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
   }, []);
 
   useEffect(() => {
-    if (!nmp_mapboxgl || !mapContainerRef.current) return;
+    if (!nmp_mapboxgl || !mapContainerRef.current || mapInstance) return;
     const centerPoint = initialCenter
       ? [initialCenter.lng, initialCenter.lat]
       : [51.389, 35.6892];
@@ -554,7 +589,11 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
     setMapInstance(map);
     mapRef.current = map;
     return () => {
-      if (map) map.remove();
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      setMapInstance(null);
     };
   }, [nmp_mapboxgl, initialCenter]);
 
@@ -565,27 +604,31 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
     staticMarkers.forEach((store, idx) => {
       const wrapper = document.createElement("div");
       wrapper.className = "flex flex-col items-center cursor-pointer";
-      wrapper.style.transition = "opacity 0.3s ease-in-out";
+      wrapper.style.transition = "opacity 0.3s ease";
       wrapper.style.opacity =
         selectedMarkerIdx !== -1 && selectedMarkerIdx !== idx ? "0.5" : "1";
+      wrapper.style.transform =
+        selectedMarkerIdx === idx ? "scale(1.2)" : "scale(1)";
+      wrapper.style.willChange = "transform, opacity";
+
       const img = document.createElement("img");
       img.src = YadakchiLogo.src;
-      img.className =
-        "w-6 h-6 lg:w-8 lg:h-8 object-contain transition-all duration-300";
-      img.style.transform =
-        selectedMarkerIdx === idx ? "scale(1.5)" : "scale(1)";
+      img.className = "w-8 h-8 object-contain drop-shadow-lg";
       wrapper.appendChild(img);
+
       const label = document.createElement("div");
       label.innerText = store.price
         ? `${store.name} (${store.price} ت)`
         : store.name;
       label.className =
-        "bg-white text-black border-orange-500 text-[9px] px-1.5 py-0.5 rounded-md mt-1 whitespace-nowrap font-bold";
+        "bg-white text-black text-[10px] px-1.5 py-0.5 rounded-md mt-1 whitespace-nowrap font-bold shadow-md";
       wrapper.appendChild(label);
+
       wrapper.onclick = (e) => {
         e.stopPropagation();
         handleStoreSelect(store, idx);
       };
+
       const newMarker = new nmp_mapboxgl.Marker({
         element: wrapper,
         anchor: "bottom",
@@ -594,20 +637,19 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
         .addTo(mapInstance);
       staticMarkerRefs.current.push(newMarker);
     });
-  }, [selectedMarkerIdx, mapInstance, nmp_mapboxgl, staticMarkers]);
+  }, [selectedMarkerIdx, mapInstance]);
 
   const handleStoreSelect = (store, index) => {
-    if (selectedMarkerIdx === index) {
-      setSelectedMarkerIdx(-1);
-    } else {
-      setSelectedMarkerIdx(index);
-      if (mapRef.current) {
-        mapRef.current.flyTo({
-          center: [store.lng, store.lat],
-          zoom: 17,
-          essential: true,
-        });
-      }
+    const newIndex = selectedMarkerIdx === index ? -1 : index;
+    setSelectedMarkerIdx(newIndex);
+
+    if (newIndex !== -1 && mapRef.current) {
+      mapRef.current.flyTo({
+        center: [store.lng, store.lat],
+        zoom: Math.max(mapRef.current.getZoom(), 15),
+        essential: true,
+        duration: 1200,
+      });
     }
   };
 
@@ -621,8 +663,14 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
   };
 
   const sheetVariants = {
-    closed: { y: "100%" },
-    open: { y: "0%" },
+    closed: {
+      y: "100%",
+      transition: { type: "spring", stiffness: 400, damping: 45 },
+    },
+    open: {
+      y: "0%",
+      transition: { type: "spring", stiffness: 350, damping: 35 },
+    },
   };
 
   return (
@@ -632,7 +680,7 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
         dir="rtl"
       >
         {!isMobile && (
-          <div className="w-[35%] lg:w-[30%]">
+          <div className="w-[35%] lg:w-[30%] h-full">
             <DesktopStoreListSidebar
               stores={staticMarkers}
               onStoreSelect={handleStoreSelect}
@@ -641,7 +689,6 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
             />
           </div>
         )}
-
         <div className="h-full flex-grow relative">
           <div
             ref={mapContainerRef}
@@ -649,15 +696,11 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
             onClick={handleMapContainerClick}
           />
           {mapInstance && (
-            <NeshanSearchControl
-              map={mapInstance}
-              apiKey="service.07ed2db203df42b5a08ce4340ad38b5c"
-            />
+            <NeshanSearchControl map={mapInstance} apiKey="YOUR_API_KEY" />
           )}
-
           <div
             className={`absolute z-20 bg-white/90 backdrop-blur-sm p-2 lg:p-3 rounded-lg shadow-lg text-right flex gap-2 items-center ${
-              isMobile ? "top-20 right-4" : "bottom-4 right-4"
+              isMobile ? "top-4 right-4" : "bottom-4 right-4"
             }`}
           >
             <img
@@ -670,17 +713,15 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
             </p>
           </div>
         </div>
-
         <AnimatePresence>
-          {isSheetOpen && (
+          {isMobile && isSheetOpen && (
             <motion.div
-              className="fixed left-0 bottom-0 w-full z-30 flex flex-col pointer-events-auto"
+              className="fixed left-0 bottom-0 w-full z-30 flex flex-col pointer-events-none"
               style={{ height: "45vh" }}
               variants={sheetVariants}
               initial="closed"
               animate="open"
               exit="closed"
-              transition={{ type: "spring", stiffness: 400, damping: 40 }}
             >
               <div className="flex-grow overflow-hidden flex flex-col pt-4">
                 <MobileStoreSlider
@@ -694,7 +735,6 @@ export default function MapWithStoreListPage({ initialCenter = null }) {
           )}
         </AnimatePresence>
       </div>
-
       <ReportModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}

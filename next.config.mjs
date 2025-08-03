@@ -1,13 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    async rewrites() {
-      return [
-        {
-          source: '/api/:path*',
-          destination: 'https://iran-locations-api.ir/api/:path*',
-        },
-      ]
-    },
-  };
-  
-  export default nextConfig;
+  async rewrites() {
+    return [
+      {
+        source: '/api/yadakchi/:path*',
+        destination: 'https://api-yadakchi.loca.lt/api/maps/:path*',
+      },
+    ]
+  },
+};
+
+// به جای module.exports از این خط استفاده کنید
+export default nextConfig;
